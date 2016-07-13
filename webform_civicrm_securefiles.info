@@ -1,0 +1,15 @@
+name = Webform CiviCRM SecureFiles Integration
+description = SecureFile Storage Extension for webform_civicrm
+core = 7.x
+package = CiviCRM
+dependencies[] = civicrm (>=4.4)
+dependencies[] = webform (>=4.0-beta1)
+dependencies[] = webform_civicrm (>=4.9)
+
+
+; Information added by Drupal.org packaging script on 2014-09-23
+version = "7.x-4.9"
+core = "7.x"
+project = "webform_civicrm_securefiles"
+
+

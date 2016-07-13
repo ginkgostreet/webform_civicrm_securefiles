@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * Implements hook_form_alter().
+ */
+function webform_civicrm_securefiles_form_webform_client_form_alter(&$form, &$form_state, $form_id) {
+  if ($form['#attributes']['enctype'] == "multipart/form-data" && !empty($form['#node']->webform_civicrm)) {
+    $fileFields = array();
+    webform_civicrm_securefiles_getFileFields($form['submitted'], $form_state['webform']['component_tree']['children'], $fileFields);
+
+    if (!empty($fileFields)) {
+
+      //Init Civi
+      civicrm_initialize();
+
+      //Fetch our list of enabled fields
+      $enabledFields = CRM_Core_BAO_Setting::getItem('securefiles', 'securefiles_enabled_fields', null, array());
+
+      //Get an instance of our Backend Service
+      $backendService = CRM_Securefiles_Backend::getBackendService();
+      if($backendService) {
+        foreach ($fileFields as $fid => &$fields) {
+          //Check to see if this is an enabled file field
+          if (in_array($fid, $enabledFields)) {
+
+            //We loop here because we can have the same field,
+            //for each contact on the form.
+            //And we collapse them into a list by field id.
+            foreach ($fields as &$field) {
+              //todo: Setup this field
+              $field['#attributes']['class'] = array("securefiles_upload");
+              //$field['#attached']['js'] = array(array('type' => 'inline', 'data' => "jQuery(function() {console.log('this works');})"));
+              $field['#type'] = "file";
+            }
+          } else {
+            unset($fileFields[$fid]);
+          }
+        }
+
+        if(!empty($fileFields)) {
+
+          //Handle Carrying over metadata
+          if (array_key_exists("securefiles_metadata", $_REQUEST)) {
+            $SFMetadata = array();
+            foreach ($_REQUEST['securefiles_metadata'] as $fieldId => $data) {
+              if($data) {
+                $SFMetadata[$fieldId] = json_decode($data);
+              }
+            }
+
+            if(array_key_exists("securefiles_metadata", $_SESSION)) {
+              $SFMetadata = array_merge($SFMetadata, $_SESSION['securefiles_metadata']);
+            }
+
+            $_SESSION['securefiles_metadata'] = $SFMetadata;
+          }
+
+          $js_vars = array();
+          $backendService->runWebformForm($form, $js_vars, $fileFields);
+
+          $js_vars['currentContactId'] = CRM_Core_Session::singleton()->getLoggedInContactID();
+
+          $form['#attached']['js'][] = array(
+            'data' => array('SecureFilesWidget' => $js_vars),
+            'type' => 'setting',
+          );
+
+          $form['#attached']['js'][] = array(
+            'data' => drupal_get_path('module', 'webform_civicrm_securefiles') . '/js/webform_civicrm_securefiles.js',
+            'scope' => 'footer',
+          );
+
+        }
+
+      }
+    }
+  }
+}
+
+
+function webform_civicrm_securefiles_webform_submission_presave($node, &$submission) {
+  $metadata = array();
+  $backendService = CRM_Securefiles_Backend::getBackendService();
+  if($backendService) {
+    foreach ($_REQUEST['securefiles_metadata'] as $fieldId => $data) {
+      if($data) {
+        $metadata[$fieldId] = json_decode($data);
+      }
+    }
+
+    if(array_key_exists("securefiles_metadata", $_SESSION)) {
+      $metadata = array_merge($metadata, $_SESSION['securefiles_metadata']);
+      unset($_SESSION['securefiles_metadata']);
+    }
+    $backendService->postProcessWidgetWebformForm($metadata, $node, $submission);
+  }
+}
+
+function webform_civicrm_securefiles_getFileFields(&$formNodes, &$nodes, &$fields) {
+  foreach($nodes as &$node) {
+    if ($node['type'] == "fieldset" && array_key_exists("children", $node) && !empty($node['children'])) {
+      webform_civicrm_securefiles_getFileFields($formNodes[$node['form_key']],  $node['children'], $fields);
+    }
+    if($node['type'] == "file" && strpos($node['form_key'], "civicrm") !== false && strpos($node['form_key'], "custom") !== false) {
+      $fid = webform_civicrm_securefiles_getCustomFieldId($node['form_key']);
+      if (!array_key_exists($fid, $fields)) {
+        $fields[ $fid ] = array();
+      }
+      $fields[ $fid ][] = &$formNodes[$node['form_key']];
+    }
+  }
+}
+
+
+function webform_civicrm_securefiles_getCustomFieldId($formKey) {
+  return preg_replace('/.*custom_/', '', $formKey);
+}
+
