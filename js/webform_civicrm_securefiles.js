@@ -18,6 +18,10 @@
 
   function setupSecureFiles(obj) {
     //todo: Figure out ts()
+    setTimeout(function() {
+      obj.parent().find(".form-submit.ajax-processed").not(".securefiles_upload_submit").remove();
+    }, 100);
+
     var newButton = $('<input type="submit" value="Upload" class="securefiles_upload_submit form-submit ajax-processed">');
     newButton.click(function(event) {
       handleSecureFilesUpload(event, obj);
@@ -35,26 +39,27 @@
     });
 
     extras.append(removeButton);
-    obj.before(extras);
+    obj.parent().before(extras);
     extras.hide();
   }
 
 
-  $(".securefiles_upload").each(function() {
+  $(".securefiles_upload input:file").each(function() {
     setupSecureFiles($(this));
   });
 
 
-  $(".securefiles_upload").on("securefiles_upload_complete", function(event, data) {
+  $(".securefiles_upload input:file").on("securefiles_upload_complete", function(event, data) {
     var obj = $(event.target);
     var fileTitle = data.name.replace(/.*\//g, "");
 
     //todo: Figure out ts()
-    obj.parent().find(".securefiles_upload_metadata").val(JSON.stringify(data));
-    obj.parent().find(".securefiles_upload_submit").val("Upload");
-    obj.parent().find(".securefiles_upload_submit").hide();
-    obj.parent().find(".securefiles_uploaded_filename").html(fileTitle);
-    obj.parent().find(".securefiles_information_container").show();
+    var objParent = obj.closest(".form-item");
+    objParent.find(".securefiles_upload_metadata").val(JSON.stringify(data));
+    objParent.find(".securefiles_upload_submit").val("Upload");
+    objParent.find(".securefiles_upload_submit").hide();
+    objParent.find(".securefiles_uploaded_filename").html(fileTitle);
+    objParent.find(".securefiles_information_container").show();
     obj.hide();
   });
 
