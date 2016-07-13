@@ -30,7 +30,7 @@ function webform_civicrm_securefiles_form_webform_client_form_alter(&$form, &$fo
               //todo: Setup this field
               $field['#attributes']['class'] = array("securefiles_upload");
               //$field['#attached']['js'] = array(array('type' => 'inline', 'data' => "jQuery(function() {console.log('this works');})"));
-              $field['#type'] = "file";
+              //$field['#type'] = "file";
             }
           } else {
             unset($fileFields[$fid]);
@@ -82,9 +82,12 @@ function webform_civicrm_securefiles_webform_submission_presave($node, &$submiss
   $metadata = array();
   $backendService = CRM_Securefiles_Backend::getBackendService();
   if($backendService) {
-    foreach ($_REQUEST['securefiles_metadata'] as $fieldId => $data) {
-      if($data) {
-        $metadata[$fieldId] = json_decode($data);
+
+    if(array_key_exists("securefiles_metadata", $_REQUEST)) {
+      foreach ($_REQUEST['securefiles_metadata'] as $fieldId => $data) {
+        if ($data) {
+          $metadata[$fieldId] = json_decode($data);
+        }
       }
     }
 
@@ -92,7 +95,9 @@ function webform_civicrm_securefiles_webform_submission_presave($node, &$submiss
       $metadata = array_merge($metadata, $_SESSION['securefiles_metadata']);
       unset($_SESSION['securefiles_metadata']);
     }
-    $backendService->postProcessWidgetWebformForm($metadata, $node, $submission);
+    if(!empty($metadata)) {
+      $backendService->postProcessWidgetWebformForm($metadata, $node, $submission);
+    }
   }
 }
 
