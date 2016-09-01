@@ -80,25 +80,31 @@ function webform_civicrm_securefiles_form_webform_client_form_alter(&$form, &$fo
 
 function webform_civicrm_securefiles_webform_submission_presave($node, &$submission) {
   $metadata = array();
-  $backendService = CRM_Securefiles_Backend::getBackendService();
-  if($backendService) {
+  try {
 
-    if(array_key_exists("securefiles_metadata", $_REQUEST)) {
-      foreach ($_REQUEST['securefiles_metadata'] as $fieldId => $data) {
-        if ($data) {
-          $metadata[$fieldId] = json_decode($data);
+    $backendService = false;
+    if (class_exists("CRM_Securefiles_Backend")) {
+      $backendService = CRM_Securefiles_Backend::getBackendService();
+    }
+    if($backendService) {
+
+      if(array_key_exists("securefiles_metadata", $_REQUEST)) {
+        foreach ($_REQUEST['securefiles_metadata'] as $fieldId => $data) {
+          if ($data) {
+            $metadata[$fieldId] = json_decode($data);
+          }
         }
       }
-    }
 
-    if(array_key_exists("securefiles_metadata", $_SESSION)) {
-      $metadata = array_merge($metadata, $_SESSION['securefiles_metadata']);
-      unset($_SESSION['securefiles_metadata']);
+      if(array_key_exists("securefiles_metadata", $_SESSION)) {
+        $metadata = array_merge($metadata, $_SESSION['securefiles_metadata']);
+        unset($_SESSION['securefiles_metadata']);
+      }
+      if(!empty($metadata)) {
+        $backendService->postProcessWidgetWebformForm($metadata, $node, $submission);
+      }
     }
-    if(!empty($metadata)) {
-      $backendService->postProcessWidgetWebformForm($metadata, $node, $submission);
-    }
-  }
+  } catch (Exception $e) {}
 }
 
 function webform_civicrm_securefiles_getFileFields(&$formNodes, &$nodes, &$fields) {
